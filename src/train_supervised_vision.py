@@ -9,7 +9,12 @@ from tqdm import tqdm
 
 from .dataset import ReportsWithImagesDataset
 from .vision_model import load_vision_model_and_processor, VisionTrainConfig
+import re
 
+def clean_report(text: str) -> str:
+    text = text.replace("XXXX", "")          # remove redactions
+    text = re.sub(r"\s+", " ", text)         # collapse spaces
+    return text.strip()
 
 def collate_vision(batch, tokenizer, image_processor, max_length: int):
     images = [b["image"] for b in batch]
@@ -23,7 +28,9 @@ def collate_vision(batch, tokenizer, image_processor, max_length: int):
     ).pixel_values  # [B, 3, H, W]
 
     # Decoder text: we can train on "FINDINGS: <report>"
-    texts = [p + " " + r for p, r in zip(prompts, refs)]
+    # texts = [p + " " + r for p, r in zip(prompts, refs)]
+    texts = [clean_report(p + " " + r) for p, r in zip(prompts, refs)]
+
 
     enc = tokenizer(
         texts,

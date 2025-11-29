@@ -15,6 +15,9 @@ from .config import TrainConfig
 class VisionTrainConfig(TrainConfig):
     image_size: int = 224
     encoder_decoder_model_name: str = "nlpconnect/vit-gpt2-image-captioning"
+    num_epochs: int = 3      # instead of 1
+    batch_size: int = 2      # safe for T4
+    max_length: int = 64
 
 
 def load_vision_model_and_processor(cfg: VisionTrainConfig):

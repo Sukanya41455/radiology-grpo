@@ -24,10 +24,14 @@ def eval_vision_checkpoint(
     cfg = VisionTrainConfig()
     device = cfg.device if torch.cuda.is_available() else "cpu"
 
-    # Load model, tokenizer, processor
+    # Load model + tokenizer from your fine-tuned checkpoint
     model = VisionEncoderDecoderModel.from_pretrained(model_ckpt)
     tokenizer = AutoTokenizer.from_pretrained(model_ckpt)
-    image_processor = ViTImageProcessor.from_pretrained(model_ckpt)
+
+    # Load image processor from the base captioning model, not the checkpoint
+    image_processor = ViTImageProcessor.from_pretrained(
+        cfg.encoder_decoder_model_name
+    )
 
     model.to(device)
     model.eval()
@@ -51,6 +55,8 @@ def eval_vision_checkpoint(
             pixel_values=pixel_values,
             max_length=cfg.max_length,
             num_beams=3,
+            no_repeat_ngram_size=3,
+            repetition_penalty=1.2,
         )
 
     gen_text = tokenizer.batch_decode(gen_ids, skip_special_tokens=True)[0]
@@ -59,4 +65,16 @@ def eval_vision_checkpoint(
 
 
 if __name__ == "__main__":
-    eval_vision_checkpoint()
+    # supervised
+    eval_vision_checkpoint(
+        model_ckpt="checkpoints/supervised_vision",
+        data_path="data/iu_reports_with_images.jsonl",
+        sample_idx=0,
+    )
+
+    # GRPO
+    # eval_vision_checkpoint(
+    #     model_ckpt="checkpoints/grpo_vision",
+    #     data_path="data/iu_reports_with_images.jsonl",
+    #     sample_idx=0,
+    # )
