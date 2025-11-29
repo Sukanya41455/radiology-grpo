@@ -18,7 +18,7 @@ import os
 
 REPORTS_CSV = "/kaggle/input/chest-xrays-indiana-university/indiana_reports.csv"
 PROJ_CSV    = "/kaggle/input/chest-xrays-indiana-university/indiana_projections.csv"
-IMAGE_ROOT  = "/kaggle/input/chest-xrays-indiana-university/images"
+IMAGE_ROOT  = "/kaggle/input/chest-xrays-indiana-university/images/images_normalized"
 
 # Where to write the JSONL (inside your project)
 OUT_PATH = Path("data/iu_reports_with_images.jsonl")
