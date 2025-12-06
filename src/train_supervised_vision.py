@@ -2,20 +2,21 @@
 
 import os
 from pathlib import Path
+import re
 
 import torch
-from torch.utils.data import DataLoader
 from torch.utils.data import DataLoader, random_split
-from tqdm import tqdm
+from tqdm.auto import tqdm  # ✅ notebook-friendly tqdm
 
 from .dataset import ReportsWithImagesDataset
 from .vision_model import load_vision_model_and_processor, VisionTrainConfig
-import re
+
 
 def clean_report(text: str) -> str:
     text = text.replace("XXXX", "")          # remove redactions
     text = re.sub(r"\s+", " ", text)         # collapse spaces
     return text.strip()
+
 
 def collate_vision(batch, tokenizer, image_processor, max_length: int):
     images = [b["image"] for b in batch]
@@ -28,10 +29,8 @@ def collate_vision(batch, tokenizer, image_processor, max_length: int):
         return_tensors="pt",
     ).pixel_values  # [B, 3, H, W]
 
-    # Decoder text: we can train on "FINDINGS: <report>"
-    # texts = [p + " " + r for p, r in zip(prompts, refs)]
+    # Decoder text: we train on "FINDINGS: <report>"
     texts = [clean_report(p + " " + r) for p, r in zip(prompts, refs)]
-
 
     enc = tokenizer(
         texts,
@@ -60,6 +59,10 @@ def train_supervised_vision(
     # Load model, tokenizer, and image processor
     model, tokenizer, image_processor = load_vision_model_and_processor(cfg)
     model.to(device)
+
+    # Freeze the vision encoder (ViT) – train mainly the decoder
+    for param in model.encoder.parameters():
+        param.requires_grad = False
 
     # Dataset with image paths
     full_dataset = ReportsWithImagesDataset(
@@ -95,20 +98,19 @@ def train_supervised_vision(
         collate_fn=collate_fn,
     )
 
-
     optimizer = torch.optim.AdamW(
         model.parameters(),
         lr=cfg.lr,
         weight_decay=cfg.weight_decay,
     )
 
-    model.train()
     for epoch in range(cfg.num_epochs):
-        pbar = tqdm(train_loader, desc=f"Vision Supervised Epoch {epoch+1}")
+        model.train()
         total_loss = 0.0
         total_count = 0
 
-        for batch in pbar:
+        print(f"\n=== Vision Supervised Epoch {epoch+1}/{cfg.num_epochs} ===")
+        for step, batch in enumerate(tqdm(train_loader, leave=False), start=1):
             batch = {k: v.to(device) for k, v in batch.items()}
 
             outputs = model(
@@ -125,8 +127,10 @@ def train_supervised_vision(
             bs = batch["pixel_values"].size(0)
             total_loss += loss.item() * bs
             total_count += bs
-            avg_loss = total_loss / total_count
-            pbar.set_postfix({"loss": f"{avg_loss:.4f}"})
+
+            if step % 10 == 0 or step == len(train_loader):
+                avg_loss = total_loss / total_count
+                print(f"  step {step}/{len(train_loader)}  train_loss={avg_loss:.4f}")
 
         # simple validation loss
         model.eval()
@@ -145,8 +149,6 @@ def train_supervised_vision(
                 val_count += bs
         val_loss = val_loss / max(1, val_count)
         print(f"Epoch {epoch+1}: val_loss={val_loss:.4f}")
-        model.train()
-
 
     Path(out_dir).mkdir(parents=True, exist_ok=True)
     model.save_pretrained(out_dir)
