@@ -6,7 +6,6 @@ import re
 
 import torch
 from torch.utils.data import DataLoader, random_split
-from tqdm.auto import tqdm  # ✅ notebook-friendly tqdm
 
 from .dataset import ReportsWithImagesDataset
 from .vision_model import load_vision_model_and_processor, VisionTrainConfig
@@ -29,7 +28,7 @@ def collate_vision(batch, tokenizer, image_processor, max_length: int):
         return_tensors="pt",
     ).pixel_values  # [B, 3, H, W]
 
-    # Decoder text: we train on "FINDINGS: <report>"
+    # Decoder text: "FINDINGS: <report>"
     texts = [clean_report(p + " " + r) for p, r in zip(prompts, refs)]
 
     enc = tokenizer(
@@ -60,14 +59,14 @@ def train_supervised_vision(
     model, tokenizer, image_processor = load_vision_model_and_processor(cfg)
     model.to(device)
 
-    # Freeze the vision encoder (ViT) – train mainly the decoder
+    # 🔒 Freeze the vision encoder (ViT) – train mainly decoder
     for param in model.encoder.parameters():
         param.requires_grad = False
 
     # Dataset with image paths
     full_dataset = ReportsWithImagesDataset(
         jsonl_path=data_path,
-        image_transform=None,  # image_processor will handle resizing/normalization
+        image_transform=None,
     )
 
     # 90/10 train/val split
@@ -90,7 +89,6 @@ def train_supervised_vision(
         shuffle=True,
         collate_fn=collate_fn,
     )
-
     val_loader = DataLoader(
         val_dataset,
         batch_size=cfg.batch_size,
@@ -110,7 +108,7 @@ def train_supervised_vision(
         total_count = 0
 
         print(f"\n=== Vision Supervised Epoch {epoch+1}/{cfg.num_epochs} ===")
-        for step, batch in enumerate(tqdm(train_loader, leave=False), start=1):
+        for step, batch in enumerate(train_loader, start=1):
             batch = {k: v.to(device) for k, v in batch.items()}
 
             outputs = model(
@@ -128,11 +126,12 @@ def train_supervised_vision(
             total_loss += loss.item() * bs
             total_count += bs
 
-            if step % 10 == 0 or step == len(train_loader):
+            # Print every 100 steps (or last step)
+            if step % 100 == 0 or step == len(train_loader):
                 avg_loss = total_loss / total_count
                 print(f"  step {step}/{len(train_loader)}  train_loss={avg_loss:.4f}")
 
-        # simple validation loss
+        # Validation
         model.eval()
         val_loss = 0.0
         val_count = 0
