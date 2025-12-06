@@ -14,14 +14,14 @@ class TrainConfig:
 
 @dataclass
 class GRPOConfig:
-    group_size: int = 4           # K candidates per prompt
-    max_new_tokens: int = 50
+    group_size: int = 2           # smaller K to start, cheaper & more stable
+    max_new_tokens: int = 40
     temperature: float = 0.7
     top_p: float = 0.9
-    lr: float = 1e-5
+    lr: float = 5e-6              # smaller LR for RL updates
     weight_decay: float = 0.01
     epsilon_clip: float = 0.2
-    kl_coeff: float = 0.01
-    entropy_coeff: float = 0.001
+    kl_coeff: float = 0.02        # slightly stronger KL to keep close to supervised
+    entropy_coeff: float = 0.003  # a bit more entropy to avoid collapse
     max_grad_norm: float = 1.0
     device: str = "cuda"

@@ -5,6 +5,7 @@ from pathlib import Path
 
 import torch
 from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 
 from .dataset import ReportsWithImagesDataset
@@ -61,10 +62,17 @@ def train_supervised_vision(
     model.to(device)
 
     # Dataset with image paths
-    dataset = ReportsWithImagesDataset(
+    full_dataset = ReportsWithImagesDataset(
         jsonl_path=data_path,
         image_transform=None,  # image_processor will handle resizing/normalization
     )
+
+    # 90/10 train/val split
+    val_frac = 0.1
+    n_total = len(full_dataset)
+    n_val = max(1, int(val_frac * n_total))
+    n_train = n_total - n_val
+    train_dataset, val_dataset = random_split(full_dataset, [n_train, n_val])
 
     def collate_fn(batch):
         coll = collate_vision(
@@ -73,12 +81,20 @@ def train_supervised_vision(
         coll["pixel_values"] = coll["pixel_values"]
         return coll
 
-    dataloader = DataLoader(
-        dataset,
+    train_loader = DataLoader(
+        train_dataset,
         batch_size=cfg.batch_size,
         shuffle=True,
         collate_fn=collate_fn,
     )
+
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=cfg.batch_size,
+        shuffle=False,
+        collate_fn=collate_fn,
+    )
+
 
     optimizer = torch.optim.AdamW(
         model.parameters(),
@@ -88,7 +104,7 @@ def train_supervised_vision(
 
     model.train()
     for epoch in range(cfg.num_epochs):
-        pbar = tqdm(dataloader, desc=f"Vision Supervised Epoch {epoch+1}")
+        pbar = tqdm(train_loader, desc=f"Vision Supervised Epoch {epoch+1}")
         total_loss = 0.0
         total_count = 0
 
@@ -111,6 +127,26 @@ def train_supervised_vision(
             total_count += bs
             avg_loss = total_loss / total_count
             pbar.set_postfix({"loss": f"{avg_loss:.4f}"})
+
+        # simple validation loss
+        model.eval()
+        val_loss = 0.0
+        val_count = 0
+        with torch.no_grad():
+            for batch in val_loader:
+                batch = {k: v.to(device) for k, v in batch.items()}
+                outputs = model(
+                    pixel_values=batch["pixel_values"],
+                    labels=batch["labels"],
+                )
+                loss = outputs.loss
+                bs = batch["pixel_values"].size(0)
+                val_loss += loss.item() * bs
+                val_count += bs
+        val_loss = val_loss / max(1, val_count)
+        print(f"Epoch {epoch+1}: val_loss={val_loss:.4f}")
+        model.train()
+
 
     Path(out_dir).mkdir(parents=True, exist_ok=True)
     model.save_pretrained(out_dir)

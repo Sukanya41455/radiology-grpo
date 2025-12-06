@@ -44,7 +44,7 @@ def train_grpo_vision(
     data_path: str = "data/iu_reports_with_images.jsonl",
     supervised_ckpt: str = "checkpoints/supervised_vision",
     out_dir: str = "checkpoints/grpo_vision",
-    num_steps: int = 200,
+    num_steps: int = 50,
 ):
     gcfg = GRPOConfig()
     device = gcfg.device if torch.cuda.is_available() else "cpu"
