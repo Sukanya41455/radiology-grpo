@@ -4,21 +4,14 @@ import pandas as pd
 import json
 from pathlib import Path
 import os
+import kagglehub
 
-# ==== 1. SET THESE PATHS FOR YOUR ENVIRONMENT =====================
-# If you are on COLAB and downloaded via Kaggle API, something like:
-# REPORTS_CSV = "/content/iu_xray/indiana_reports.csv"
-# PROJ_CSV    = "/content/iu_xray/indiana_projections.csv"
-# IMAGE_ROOT  = "/content/iu_xray/images"   # folder that has the PNGs
 
-# If you are on KAGGLE:
-# REPORTS_CSV = "/kaggle/input/chest-xrays-indiana-university/indiana_reports.csv"
-# PROJ_CSV    = "/kaggle/input/chest-xrays-indiana-university/indiana_projections.csv"
-# IMAGE_ROOT  = "/kaggle/input/chest-xrays-indiana-university/images"  # check name with !ls
-
-REPORTS_CSV = "/kaggle/input/chest-xrays-indiana-university/indiana_reports.csv"
-PROJ_CSV    = "/kaggle/input/chest-xrays-indiana-university/indiana_projections.csv"
-IMAGE_ROOT  = "/kaggle/input/chest-xrays-indiana-university/images/images_normalized"
+path = kagglehub.dataset_download("raddar/chest-xrays-indiana-university")
+print(path)
+REPORTS_CSV = f"{path}/indiana_reports.csv"
+PROJ_CSV    = f"{path}/indiana_projections.csv"
+IMAGE_ROOT  = f"{path}/images/images_normalized"
 
 # Where to write the JSONL (inside your project)
 OUT_PATH = Path("data/iu_reports_with_images.jsonl")
