@@ -130,7 +130,7 @@ class GRPOTrainer:
             if std < 1e-8:
                 std = torch.tensor(1.0, device=mean.device)
             advantages[mask] = (group_rewards - mean) / std
-
+        advantages = torch.clamp(advantages, -5.0, 5.0)
         return advantages
 
     def compute_grpo_loss(

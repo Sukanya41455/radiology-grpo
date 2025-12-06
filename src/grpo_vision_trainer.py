@@ -143,6 +143,8 @@ class VisionGRPOTrainer:
                 std = torch.tensor(1.0, device=mean.device)
             advantages[mask] = (group_rewards - mean) / std
 
+        # Clip advantages to avoid huge updates
+        advantages = torch.clamp(advantages, -5.0, 5.0)
         return advantages
 
     def compute_grpo_loss(

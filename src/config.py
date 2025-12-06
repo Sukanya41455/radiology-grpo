@@ -20,7 +20,7 @@ class GRPOConfig:
     top_p: float = 0.9
     lr: float = 5e-6          # was 1e-5
     weight_decay: float = 0.01
-    epsilon_clip: float = 0.2
+    epsilon_clip: float = 0.1 # was 0.2
     kl_coeff: float = 0.05    # was 0.01
     entropy_coeff: float = 0.01  # was 0.001
     max_grad_norm: float = 1.0
