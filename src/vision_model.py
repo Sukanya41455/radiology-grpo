@@ -45,6 +45,8 @@ def load_vision_model_and_processor(cfg: VisionTrainConfig):
     # Important: set special tokens & generation params
     model.config.pad_token_id = tokenizer.pad_token_id
     model.config.eos_token_id = tokenizer.eos_token_id
+    model.config.decoder_start_token_id = tokenizer.bos_token_id or tokenizer.eos_token_id
+
 
     # Reasonable defaults for generation
     model.config.max_length = cfg.max_length

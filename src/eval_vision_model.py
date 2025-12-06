@@ -53,11 +53,14 @@ def eval_vision_checkpoint(
     with torch.no_grad():
         gen_ids = model.generate(
             pixel_values=pixel_values,
-            max_length=cfg.max_length,
-            num_beams=3,
-            no_repeat_ngram_size=3,
-            repetition_penalty=1.2,
+            max_length=80,             # allow a bit more room than 64
+            num_beams=5,               # stronger search
+            no_repeat_ngram_size=4,    # suppress repetitive phrases
+            repetition_penalty=1.4,    # penalize reuse
+            length_penalty=1.0,
+            early_stopping=True,
         )
+
 
     gen_text = tokenizer.batch_decode(gen_ids, skip_special_tokens=True)[0]
     print("\nGENERATED:")

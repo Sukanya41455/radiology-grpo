@@ -1,54 +1,67 @@
+# src/reward_functions.py
+
 from typing import List
 import numpy as np
+import re
+from collections import Counter
 
 
-CLINICAL_TERMS = [
-    "pneumothorax",
-    "effusion",
-    "consolidation",
-    "atelectasis",
-    "cardiomegaly",
-    "edema",
-    "opacity",
-    "fibrosis",
-]
+def _clean(text: str) -> str:
+    # same spirit as train_supervised_vision.clean_report
+    text = text.replace("XXXX", "")
+    text = text.lower()
+    text = re.sub(r"[^a-z0-9.,;:/\-()\s]", " ", text)  # keep basic punct
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
 
 
-def _unigram_f1(pred_tokens, ref_tokens):
-    ref_set = set(ref_tokens)
-    pred_set = set(pred_tokens)
-
-    tp = len(ref_set & pred_set)
-    fp = len(pred_set - ref_set)
-    fn = len(ref_set - pred_set)
-
-    precision = tp / (tp + fp + 1e-8)
-    recall = tp / (tp + fn + 1e-8)
-    f1 = 2 * precision * recall / (precision + recall + 1e-8)
-    return f1
+def _tokens(text: str) -> List[str]:
+    return _clean(text).split()
 
 
-def _clinical_f1(pred: str, ref: str) -> float:
-    pred_lower = pred.lower()
-    ref_lower = ref.lower()
+def _bigrams(tokens: List[str]) -> List[str]:
+    return [" ".join(pair) for pair in zip(tokens, tokens[1:])]
 
-    tp = fp = fn = 0
-    for term in CLINICAL_TERMS:
-        in_pred = term in pred_lower
-        in_ref = term in ref_lower
-        if in_pred and in_ref:
-            tp += 1
-        elif in_pred and not in_ref:
-            fp += 1
-        elif not in_pred and in_ref:
-            fn += 1
-    if tp + fp + fn == 0:
+
+def _unigram_f1(pred_tokens: List[str], ref_tokens: List[str]) -> float:
+    if not ref_tokens or not pred_tokens:
         return 0.0
+    pred_counts = Counter(pred_tokens)
+    ref_counts = Counter(ref_tokens)
 
-    precision = tp / (tp + fp + 1e-8)
-    recall = tp / (tp + fn + 1e-8)
+    overlap = sum(min(pred_counts[w], ref_counts[w]) for w in pred_counts.keys())
+    precision = overlap / (len(pred_tokens) + 1e-8)
+    recall = overlap / (len(ref_tokens) + 1e-8)
+    if precision + recall == 0:
+        return 0.0
     f1 = 2 * precision * recall / (precision + recall + 1e-8)
-    return f1
+    return float(f1)
+
+
+def _bigram_jaccard(pred_tokens: List[str], ref_tokens: List[str]) -> float:
+    if len(pred_tokens) < 2 or len(ref_tokens) < 2:
+        return 0.0
+    p_bi = set(_bigrams(pred_tokens))
+    r_bi = set(_bigrams(ref_tokens))
+    if not p_bi or not r_bi:
+        return 0.0
+    inter = len(p_bi & r_bi)
+    union = len(p_bi | r_bi)
+    return float(inter / (union + 1e-8))
+
+
+def _repetition_penalty(pred_tokens: List[str]) -> float:
+    """
+    Penalize repeated bigrams like "... thoric.gener changes thoric.gener changes ..."
+    """
+    if len(pred_tokens) < 2:
+        return 0.0
+    bigs = _bigrams(pred_tokens)
+    counts = Counter(bigs)
+    # sum of (count - 1) over bigrams that appear more than once
+    extra = sum(c - 1 for c in counts.values() if c > 1)
+    # normalize by length
+    return extra / (len(bigs) + 1e-8)
 
 
 def composite_reward(
@@ -56,21 +69,30 @@ def composite_reward(
     references: List[str],
 ) -> np.ndarray:
     """
-    Reward = 0.6 * unigram F1 + 0.4 * clinical keyword F1 - small length penalty.
-    Cheap but better than raw overlap.
+    Reward = 0.7 * unigram F1 + 0.3 * bigram Jaccard
+             - 0.3 * repetition_penalty
+             - 0.1 * length_penalty (for very long generations)
     """
     rewards = []
     for pred, ref in zip(predictions, references):
-        ref_tokens = ref.lower().split()
-        pred_tokens = pred.lower().split()
+        pred_toks = _tokens(pred)
+        ref_toks = _tokens(ref)
 
-        uni_f1 = _unigram_f1(pred_tokens, ref_tokens)
-        clinical = _clinical_f1(pred, ref)
+        f1 = _unigram_f1(pred_toks, ref_toks)
+        bigram_score = _bigram_jaccard(pred_toks, ref_toks)
 
-        # light length penalty for very long rambly outputs
-        length_penalty = max(0.0, (len(pred_tokens) - 80) / 80.0)
+        rep_pen = _repetition_penalty(pred_toks)
 
-        reward = 0.6 * uni_f1 + 0.4 * clinical - 0.1 * length_penalty
+        # Length penalty if prediction way longer than reference
+        len_ratio = len(pred_toks) / (len(ref_toks) + 1e-8)
+        length_pen = max(0.0, len_ratio - 1.5)  # penalize if >150% length
+
+        reward = (
+            0.7 * f1
+            + 0.3 * bigram_score
+            - 0.3 * rep_pen
+            - 0.1 * length_pen
+        )
         rewards.append(float(reward))
 
     return np.array(rewards, dtype=np.float32)
