@@ -73,8 +73,8 @@ if __name__ == "__main__":
     )
 
     # GRPO
-    # eval_vision_checkpoint(
-    #     model_ckpt="checkpoints/grpo_vision",
-    #     data_path="data/iu_reports_with_images.jsonl",
-    #     sample_idx=0,
-    # )
+    eval_vision_checkpoint(
+        model_ckpt="checkpoints/grpo_vision",
+        data_path="data/iu_reports_with_images.jsonl",
+        sample_idx=0,
+    )
