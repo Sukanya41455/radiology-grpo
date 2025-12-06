@@ -192,9 +192,11 @@ class VisionGRPOTrainer:
         obj2 = clipped_ratio * advantages
         policy_loss = -torch.mean(torch.min(obj1, obj2))
 
-        # 5. KL penalty
-        kl = torch.mean(seq_logp_pi - seq_logp_ref)
+        # 5. KL penalty (squared log-ratio, >= 0)
+        log_ratio = seq_logp_pi - seq_logp_ref
+        kl = torch.mean(log_ratio ** 2)
         kl_loss = self.config.kl_coeff * kl
+
 
         # 6. Entropy bonus
         entropy_loss = -self.config.entropy_coeff * seq_ent.mean()
