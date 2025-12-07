@@ -4,10 +4,11 @@ import pandas as pd
 import json
 from pathlib import Path
 import os
-import kagglehub
+# import kagglehub
 
 
-path = kagglehub.dataset_download("raddar/chest-xrays-indiana-university")
+# path = kagglehub.dataset_download("raddar/chest-xrays-indiana-university")
+path = "/scratch/user/sukanya.sahoo/drl/radiology-grpo/data"
 print(path)
 REPORTS_CSV = f"{path}/indiana_reports.csv"
 PROJ_CSV    = f"{path}/indiana_projections.csv"
