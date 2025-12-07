@@ -62,14 +62,14 @@ class VisionGRPOTrainer:
 
         gen_ids = self.policy.generate(
             pixel_values,
-            max_length=self.config.max_length,
+            max_length=self.policy.config.max_length,
             num_return_sequences=self.config.group_size,
-            do_sample=True,                     
+            do_sample=True,
             top_p=self.config.top_p,
             temperature=self.config.temperature,
             pad_token_id=self.tokenizer.pad_token_id,
             eos_token_id=self.tokenizer.eos_token_id,
-            num_beams=1,                         
+            num_beams=1,  # important to avoid GPT-2 beam search crash
         )
 
 
