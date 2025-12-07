@@ -61,13 +61,17 @@ class VisionGRPOTrainer:
         pad_id = self.tokenizer.pad_token_id or self.tokenizer.eos_token_id
 
         gen_ids = self.policy.generate(
-            pixel_values=repeated_pixels.to(device),
-            max_new_tokens=self.config.max_new_tokens,
-            do_sample=True,
-            temperature=self.config.temperature,
+            pixel_values,
+            max_length=self.config.max_length,
+            num_return_sequences=self.config.group_size,
+            do_sample=True,                     
             top_p=self.config.top_p,
-            pad_token_id=pad_id,
+            temperature=self.config.temperature,
+            pad_token_id=self.tokenizer.pad_token_id,
+            eos_token_id=self.tokenizer.eos_token_id,
+            num_beams=1,                         
         )
+
 
         predictions = self.tokenizer.batch_decode(
             gen_ids, skip_special_tokens=True

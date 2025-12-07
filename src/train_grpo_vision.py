@@ -57,6 +57,11 @@ def train_grpo_vision(
     policy.config.pad_token_id = tokenizer.pad_token_id
     policy.config.eos_token_id = tokenizer.eos_token_id
 
+    # IMPORTANT: disable beam search for GPT-2 (use sampling instead)
+    policy.config.num_beams = 1
+    if hasattr(policy, "generation_config") and policy.generation_config is not None:
+        policy.generation_config.num_beams = 1
+
     # 2. Reference model = frozen copy of supervised policy
     ref_model = deepcopy(policy)
 
