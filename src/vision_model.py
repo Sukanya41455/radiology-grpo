@@ -14,11 +14,12 @@ from .config import TrainConfig
 @dataclass
 class VisionTrainConfig(TrainConfig):
     image_size: int = 224
-    encoder_decoder_model_name: str = "nlpconnect/vit-gpt2-image-captioning"
+    encoder_decoder_model_name: str = "Henil1/vit-axavision-2-ChestX"
     num_epochs: int = 6
-    batch_size: int = 2      
+    batch_size: int = 2
     max_length: int = 64
     lr: float = 3e-5
+
 
 
 def load_vision_model_and_processor(cfg: VisionTrainConfig):

@@ -3,13 +3,14 @@ from dataclasses import dataclass
 
 @dataclass
 class TrainConfig:
-    model_name: str = "distilgpt2"
+    model_name: str = "microsoft/biogpt"  # instead of "distilgpt2"
     max_length: int = 128
-    batch_size: int = 4
+    batch_size: int = 4      # if you see OOM in GRPO, drop to 2
     num_epochs: int = 2
     lr: float = 5e-5
     weight_decay: float = 0.01
     device: str = "cuda"
+
 
 
 @dataclass
