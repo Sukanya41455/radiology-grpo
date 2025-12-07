@@ -20,7 +20,7 @@ from .grpo_vision_trainer import VisionGRPOTrainer
 def collate_vision_grpo(
     batch: List[Dict],
     image_processor: ViTImageProcessor,
-    max_length: int = 128,
+    max_length: int = 128,  # kept for compatibility, not used internally
 ):
     """
     Prepare pixel_values and references for GRPO.
@@ -49,7 +49,7 @@ def train_grpo_vision(
     gcfg = GRPOConfig()
     device = gcfg.device if torch.cuda.is_available() else "cpu"
 
-    # 1. Load supervised vision model & tokenizer
+    # 1. Load supervised vision model & tokenizer (this is our initial policy)
     policy = VisionEncoderDecoderModel.from_pretrained(supervised_ckpt)
     tokenizer = AutoTokenizer.from_pretrained(supervised_ckpt)
     if tokenizer.pad_token_id is None:
@@ -57,18 +57,20 @@ def train_grpo_vision(
     policy.config.pad_token_id = tokenizer.pad_token_id
     policy.config.eos_token_id = tokenizer.eos_token_id
 
-    # 2. Reference model = frozen copy of supervised
+    # 2. Reference model = frozen copy of supervised policy
     ref_model = deepcopy(policy)
 
-    # 3. Image processor (use base model's processor or original name)
-    # If supervised_ckpt doesn't have processor config,
-    # it's safe to load from the original captioning model name.
-    # Adjust if you used a different encoder-decoder checkpoint.
-    from .vision_model import VisionTrainConfig
-    vcfg = VisionTrainConfig()
-    image_processor = ViTImageProcessor.from_pretrained(
-        vcfg.encoder_decoder_model_name
-    )
+    # 3. Image processor
+    # Prefer the processor saved with the supervised checkpoint.
+    # If it's not there, fall back to the base ViT-GPT2 captioning model.
+    try:
+        image_processor = ViTImageProcessor.from_pretrained(supervised_ckpt)
+        print(f"Loaded image processor from supervised checkpoint: {supervised_ckpt}")
+    except Exception as e:
+        print(f"Could not load processor from {supervised_ckpt}, falling back to base model. Error: {e}")
+        image_processor = ViTImageProcessor.from_pretrained(
+            "nlpconnect/vit-gpt2-image-captioning"
+        )
 
     # 4. Dataset & dataloader
     dataset = ReportsWithImagesDataset(
@@ -80,18 +82,17 @@ def train_grpo_vision(
         return collate_vision_grpo(
             batch,
             image_processor=image_processor,
-            max_length=vcfg.max_length,
+            max_length=128,  # not used inside but kept for signature
         )
 
-    from torch.utils.data import DataLoader
     dataloader = DataLoader(
         dataset,
-        batch_size=2,  # start small for T4
+        batch_size=2,  # small for T4 / Colab
         shuffle=True,
         collate_fn=collate_fn,
     )
 
-    # 5. Trainer
+    # 5. GRPO trainer
     trainer = VisionGRPOTrainer(
         policy=policy,
         ref_model=ref_model,
