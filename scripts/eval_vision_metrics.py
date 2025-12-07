@@ -82,10 +82,12 @@ def run_eval(
             gen_ids = model.generate(
                 pixel_values=pixel_values,
                 max_length=cfg.max_length,
-                num_beams=3,
+                num_beams=1,              #disable beam search
+                do_sample=False,          # greedy
                 no_repeat_ngram_size=3,
                 repetition_penalty=1.2,
             )
+
 
             preds = tokenizer.batch_decode(gen_ids, skip_special_tokens=True)
 
