@@ -59,7 +59,7 @@ def train_supervised_vision(
     model, tokenizer, image_processor = load_vision_model_and_processor(cfg)
     model.to(device)
 
-    # 🔒 Freeze the vision encoder (ViT) – train mainly decoder
+    # Freeze the vision encoder (ViT) – train mainly decoder
     for param in model.encoder.parameters():
         param.requires_grad = False
 

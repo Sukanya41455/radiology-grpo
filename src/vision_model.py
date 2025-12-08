@@ -13,7 +13,7 @@ from .config import TrainConfig
 @dataclass
 class VisionTrainConfig(TrainConfig):
     image_size: int = 224
-    # 🔁 use CheXpert+MIMIC CXR findings baseline
+    # use CheXpert+MIMIC CXR findings baseline
     encoder_decoder_model_name: str = "IAMJB/chexpert-mimic-cxr-findings-baseline"
     num_epochs: int = 8          # you have more compute now
     batch_size: int = 4          # try 4–8, reduce if OOM
@@ -79,6 +79,6 @@ def load_vision_model_and_processor(cfg: VisionTrainConfig):
 
     # Generation defaults
     model.config.max_length = cfg.max_length
-    model.config.num_beams = 1    # 🔧 keep 1 to avoid _reorder_cache issues with GPT2-like decoders
+    model.config.num_beams = 1    # keep 1 to avoid _reorder_cache issues with GPT2-like decoders
 
     return model, tokenizer, image_processor

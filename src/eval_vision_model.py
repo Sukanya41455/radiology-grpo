@@ -54,7 +54,7 @@ def eval_vision_checkpoint(
         gen_ids = model.generate(
             pixel_values=pixel_values,
             max_length=80,
-            num_beams=1,              # 🔧 force no beam search
+            num_beams=1,              # force no beam search
             do_sample=False,          # greedy
             no_repeat_ngram_size=4,
             repetition_penalty=1.4,
