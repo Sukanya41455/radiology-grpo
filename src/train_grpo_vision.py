@@ -56,6 +56,8 @@ def train_grpo_vision(
         tokenizer.pad_token_id = tokenizer.eos_token_id
     policy.config.pad_token_id = tokenizer.pad_token_id
     policy.config.eos_token_id = tokenizer.eos_token_id
+    policy.config.num_beams = 1
+
 
     # 2. Reference model = frozen copy of supervised
     ref_model = deepcopy(policy)

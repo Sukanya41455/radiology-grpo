@@ -67,7 +67,9 @@ class VisionGRPOTrainer:
             temperature=self.config.temperature,
             top_p=self.config.top_p,
             pad_token_id=pad_id,
+            num_beams=1,              
         )
+
 
         predictions = self.tokenizer.batch_decode(
             gen_ids, skip_special_tokens=True
